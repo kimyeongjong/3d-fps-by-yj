@@ -20,7 +20,7 @@ app.innerHTML = `
         <p class="eyebrow">Neo Seoul Defense Grid</p>
         <h1>Modern City 3D FPS</h1>
         <p class="copy">
-          Rush through a bright neon downtown and stop the incoming drones. Pointer
+          Rush through a bright neon downtown and stop the incoming creatures. Pointer
           lock is supported, and the game remains keyboard-playable for automated tests.
         </p>
         <ul class="controls">
@@ -68,7 +68,7 @@ const gravity = 28;
 const floorY = playerHeight;
 const arenaLimit = 58;
 const fireCooldown = 0.14;
-const enemyRadius = 1.05;
+const enemyRadius = 1.45;
 
 const clock = new THREE.Clock();
 const input = new Set();
@@ -90,7 +90,7 @@ const state = {
   fireTimer: 0,
   enemyDamageTimer: 0,
   cameraYaw: 0,
-  cameraPitch: -0.06,
+  cameraPitch: 0,
   pointerLocked: false,
   player: {
     position: new THREE.Vector3(0, floorY, 24),
@@ -415,41 +415,228 @@ function addDecor() {
   }
 }
 
-function createEnemyMesh() {
+function createEnemyMesh(seed = 0) {
   const group = new THREE.Group();
-  const core = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.9, 1.15, 1.4, 8),
-    new THREE.MeshStandardMaterial({
-      color: 0x182334,
-      metalness: 0.35,
-      roughness: 0.42,
-      emissive: 0xff4d63,
-      emissiveIntensity: 0.32,
-    })
-  );
-  core.castShadow = true;
-  core.receiveShadow = true;
-  group.add(core);
+  const paletteShift = (seed % 3) * 0.02;
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0x7e7268).offsetHSL(0, 0, paletteShift),
+    roughness: 0.92,
+    metalness: 0.02,
+  });
+  const scarMaterial = new THREE.MeshStandardMaterial({
+    color: 0x93857b,
+    roughness: 0.96,
+    metalness: 0.01,
+  });
+  const mouthMaterial = new THREE.MeshStandardMaterial({
+    color: 0xc85a6a,
+    emissive: 0xff5f85,
+    emissiveIntensity: 0.55,
+    roughness: 0.5,
+    metalness: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const innerMouthMaterial = new THREE.MeshStandardMaterial({
+    color: 0x6e142b,
+    emissive: 0xff6b8c,
+    emissiveIntensity: 0.85,
+    roughness: 0.42,
+    metalness: 0.02,
+  });
+  const clawMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd9c5b8,
+    roughness: 0.58,
+    metalness: 0.03,
+  });
 
-  const eye = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, 0.24, 0.18),
-    new THREE.MeshBasicMaterial({ color: 0xfff0bf })
-  );
-  eye.position.set(0, 0.12, 0.72);
-  group.add(eye);
+  const body = new THREE.Group();
+  body.position.y = 1.7;
+  group.add(body);
 
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.95, 0.08, 8, 18),
-    new THREE.MeshStandardMaterial({
-      color: 0x78dcff,
-      emissive: 0x78dcff,
-      emissiveIntensity: 1.1,
-    })
+  const torso = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.46, 1.35, 5, 10),
+    bodyMaterial
   );
-  ring.rotation.x = Math.PI / 2;
-  group.add(ring);
+  torso.castShadow = true;
+  torso.receiveShadow = true;
+  torso.rotation.z = 0.08;
+  body.add(torso);
 
-  return group;
+  const backRidge = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.2, 0.88, 4, 8),
+    scarMaterial
+  );
+  backRidge.position.set(0, 0.28, -0.28);
+  backRidge.rotation.x = -0.2;
+  backRidge.castShadow = true;
+  body.add(backRidge);
+
+  const waist = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 12, 10),
+    bodyMaterial
+  );
+  waist.position.set(0, -0.88, 0);
+  waist.scale.set(1.05, 0.9, 0.95);
+  waist.castShadow = true;
+  body.add(waist);
+
+  const chestScar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.7, 0.04),
+    innerMouthMaterial
+  );
+  chestScar.position.set(0, 0.12, 0.47);
+  chestScar.rotation.x = -0.08;
+  body.add(chestScar);
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.18, 0.32, 8),
+    bodyMaterial
+  );
+  neck.position.set(0, 0.96, 0.02);
+  neck.castShadow = true;
+  body.add(neck);
+
+  const head = new THREE.Group();
+  head.position.set(0, 1.3, 0.16);
+  body.add(head);
+
+  const headCore = new THREE.Mesh(
+    new THREE.SphereGeometry(0.26, 12, 12),
+    innerMouthMaterial
+  );
+  headCore.scale.set(0.7, 0.7, 0.8);
+  headCore.position.set(0, -0.02, 0.02);
+  head.add(headCore);
+
+  const mouthGlow = new THREE.PointLight(0xff6f91, 1.4, 7, 2);
+  mouthGlow.position.set(0, 0.1, 0.35);
+  head.add(mouthGlow);
+
+  const petals = [];
+  for (let i = 0; i < 5; i++) {
+    const petalPivot = new THREE.Group();
+    const petal = new THREE.Mesh(
+      new THREE.ConeGeometry(0.22, 0.9, 6, 1, true),
+      mouthMaterial
+    );
+    petal.castShadow = true;
+    petal.receiveShadow = true;
+    petal.position.y = 0.42;
+    petal.rotation.x = Math.PI;
+    petalPivot.add(petal);
+
+    const angle = (i / 5) * Math.PI * 2;
+    petalPivot.position.set(Math.cos(angle) * 0.08, 0.05, Math.sin(angle) * 0.08);
+    petalPivot.rotation.z = THREE.MathUtils.degToRad(58);
+    petalPivot.rotation.y = angle;
+    head.add(petalPivot);
+    petals.push(petalPivot);
+  }
+
+  const upperArms = [];
+  const forearms = [];
+  const armSides = [-1, 1];
+  for (const side of armSides) {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(side * 0.62, 0.56, 0.04);
+    body.add(shoulder);
+
+    const upperArm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.12, 0.86, 4, 8),
+      bodyMaterial
+    );
+    upperArm.castShadow = true;
+    upperArm.position.y = -0.42;
+    upperArm.rotation.z = side * 0.16;
+    shoulder.add(upperArm);
+    upperArms.push(shoulder);
+
+    const elbow = new THREE.Group();
+    elbow.position.set(0, -0.86, 0.02);
+    shoulder.add(elbow);
+
+    const forearm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.09, 0.96, 4, 8),
+      scarMaterial
+    );
+    forearm.castShadow = true;
+    forearm.position.y = -0.46;
+    forearm.rotation.z = side * 0.08;
+    elbow.add(forearm);
+    forearms.push(elbow);
+
+    for (let i = 0; i < 3; i++) {
+      const claw = new THREE.Mesh(
+        new THREE.ConeGeometry(0.028, 0.26, 4),
+        clawMaterial
+      );
+      claw.position.set(side * (0.05 - i * 0.05), -0.98, 0.12 + i * 0.04);
+      claw.rotation.x = -Math.PI / 2 - 0.2;
+      claw.rotation.z = side * 0.2;
+      elbow.add(claw);
+    }
+  }
+
+  const thighs = [];
+  const calves = [];
+  const legSides = [-1, 1];
+  for (const side of legSides) {
+    const hip = new THREE.Group();
+    hip.position.set(side * 0.28, -1.02, 0.02);
+    body.add(hip);
+
+    const thigh = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.13, 0.86, 4, 8),
+      bodyMaterial
+    );
+    thigh.castShadow = true;
+    thigh.position.y = -0.42;
+    thigh.rotation.z = side * 0.04;
+    hip.add(thigh);
+    thighs.push(hip);
+
+    const knee = new THREE.Group();
+    knee.position.set(0, -0.84, 0.08);
+    hip.add(knee);
+
+    const calf = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.11, 0.88, 4, 8),
+      scarMaterial
+    );
+    calf.castShadow = true;
+    calf.position.y = -0.45;
+    calf.rotation.x = 0.65;
+    knee.add(calf);
+    calves.push(knee);
+
+    const foot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.08, 0.52),
+      clawMaterial
+    );
+    foot.position.set(0, -0.92, 0.32);
+    foot.castShadow = true;
+    knee.add(foot);
+  }
+
+  group.userData.enemyParts = {
+    body,
+    torso,
+    mouthGlow,
+    headCore,
+    petals,
+    upperArms,
+    forearms,
+    thighs,
+    calves,
+    baseMouthIntensity: mouthMaterial.emissiveIntensity,
+    baseInnerIntensity: innerMouthMaterial.emissiveIntensity,
+    baseGlowIntensity: mouthGlow.intensity,
+  };
+
+  return {
+    mesh: group,
+    parts: group.userData.enemyParts,
+  };
 }
 
 function resetWave(wave) {
@@ -471,17 +658,21 @@ function resetWave(wave) {
   const count = Math.min(spawnPoints.length, 3 + wave);
 
   for (let i = 0; i < count; i++) {
-    const mesh = createEnemyMesh();
+    const enemyVisual = createEnemyMesh(i);
+    const mesh = enemyVisual.mesh;
     mesh.position.copy(spawnPoints[i]);
     scene.add(mesh);
     enemyPool.push({
       id: `enemy-${wave}-${i}`,
       mesh,
+      parts: enemyVisual.parts,
       hp: 50 + wave * 10,
       alive: true,
       attackCooldown: 0.5,
       bobOffset: Math.random() * Math.PI * 2,
       flash: 0,
+      strideOffset: Math.random() * Math.PI * 2,
+      pose: "stalking",
     });
   }
 }
@@ -502,7 +693,7 @@ function startGame() {
     return;
   }
   state.mode = "playing";
-  statusLine.textContent = "Drones incoming. Defend the central plaza.";
+  statusLine.textContent = "Hostiles incoming. Defend the central plaza.";
   showOverlay(false);
   requestPointerLock();
 }
@@ -519,7 +710,7 @@ function restartGame() {
   state.player.velocity.set(0, 0, 0);
   state.player.grounded = true;
   state.cameraYaw = 0;
-  state.cameraPitch = -0.06;
+  state.cameraPitch = 0;
   clearTransientEffects();
   resetWave(1);
   updateUi();
@@ -726,10 +917,10 @@ function fireShot() {
       state.score += 100;
       spawnExplosion(closestEnemy.mesh.position.clone(), 0x7ce9ff);
       scene.remove(closestEnemy.mesh);
-      statusLine.textContent = "Drone eliminated.";
+      statusLine.textContent = "Creature eliminated.";
     } else {
       state.score += 10;
-      statusLine.textContent = "Drone hit.";
+      statusLine.textContent = "Hostile hit.";
     }
     updateUi();
   }
@@ -831,16 +1022,44 @@ function updateEnemies(delta) {
     const distance = toPlayer.length();
     const dir = toPlayer.normalize();
     enemy.mesh.position.addScaledVector(dir, delta * (2.4 + state.wave * 0.15));
-    enemy.mesh.position.y = 0.72 + Math.sin(state.simulationTime * 3 + enemy.bobOffset) * 0.24;
-    enemy.mesh.lookAt(state.player.position.x, enemy.mesh.position.y, state.player.position.z);
+    enemy.mesh.position.y = 1.48 + Math.sin(state.simulationTime * 5 + enemy.bobOffset) * 0.05;
+    enemy.mesh.lookAt(state.player.position.x, enemy.mesh.position.y + 0.1, state.player.position.z);
     enemy.mesh.rotation.x = 0;
     enemy.mesh.rotation.z = 0;
 
+    const stride = state.simulationTime * 7 + enemy.strideOffset;
+    const strideSin = Math.sin(stride);
+    const strideCos = Math.cos(stride);
+    enemy.parts.body.rotation.z = strideSin * 0.08;
+    enemy.parts.body.rotation.x = -0.12 + strideCos * 0.05;
+    enemy.parts.body.position.y = 1.7 + Math.abs(strideSin) * 0.05;
+
+    enemy.parts.upperArms[0].rotation.x = -0.55 - strideSin * 0.45;
+    enemy.parts.upperArms[1].rotation.x = -0.55 + strideSin * 0.45;
+    enemy.parts.forearms[0].rotation.x = -0.35 + strideCos * 0.2;
+    enemy.parts.forearms[1].rotation.x = -0.35 - strideCos * 0.2;
+    enemy.parts.thighs[0].rotation.x = 0.28 + strideSin * 0.55;
+    enemy.parts.thighs[1].rotation.x = 0.28 - strideSin * 0.55;
+    enemy.parts.calves[0].rotation.x = 0.72 + Math.max(0, -strideSin) * 0.4;
+    enemy.parts.calves[1].rotation.x = 0.72 + Math.max(0, strideSin) * 0.4;
+
     if (enemy.flash > 0) {
       enemy.flash -= delta;
-      enemy.mesh.children[0].material.emissiveIntensity = 1.1;
+      enemy.pose = "flaring";
     } else {
-      enemy.mesh.children[0].material.emissiveIntensity = 0.32;
+      enemy.pose = distance < 4 ? "lunging" : "stalking";
+    }
+
+    const mouthPulse = 0.4 + Math.max(0, Math.sin(state.simulationTime * 9 + enemy.bobOffset)) * 0.3;
+    const flashBoost = enemy.flash > 0 ? enemy.flash * 5.5 : 0;
+    enemy.parts.headCore.material.emissiveIntensity = enemy.parts.baseInnerIntensity + mouthPulse + flashBoost;
+    enemy.parts.mouthGlow.intensity = enemy.parts.baseGlowIntensity + mouthPulse * 0.85 + flashBoost;
+    for (let i = 0; i < enemy.parts.petals.length; i++) {
+      const petal = enemy.parts.petals[i];
+      const spread = 0.9 + Math.sin(state.simulationTime * 6 + enemy.bobOffset + i * 0.8) * 0.08;
+      const flare = enemy.flash > 0 ? enemy.flash * 0.8 : 0;
+      petal.rotation.z = THREE.MathUtils.degToRad(52 + spread * 7 + flare * 24);
+      petal.children[0].material.emissiveIntensity = enemy.parts.baseMouthIntensity + mouthPulse * 0.6 + flashBoost;
     }
 
     enemy.attackCooldown -= delta;
@@ -848,7 +1067,7 @@ function updateEnemies(delta) {
       enemy.attackCooldown = 0.7;
       state.health = Math.max(0, state.health - (8 + state.wave));
       updateUi();
-      statusLine.textContent = "Drone collision. Health reduced.";
+      statusLine.textContent = "Creature strike. Health reduced.";
       spawnExplosion(state.player.position.clone(), 0xff9175);
       if (state.health <= 0) {
         endGame();
@@ -892,10 +1111,12 @@ function renderGameToText() {
       .filter((enemy) => enemy.alive)
       .map((enemy) => ({
         id: enemy.id,
+        type: "creature",
         x: Number(enemy.mesh.position.x.toFixed(2)),
         y: Number(enemy.mesh.position.y.toFixed(2)),
         z: Number(enemy.mesh.position.z.toFixed(2)),
         hp: Number(enemy.hp.toFixed(0)),
+        state: enemy.pose,
       })),
     score: state.score,
     wave: state.wave,
