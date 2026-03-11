@@ -13,25 +13,25 @@ app.innerHTML = `
         <div class="chip"><span>Wave</span><strong id="wave-value">1</strong></div>
       </div>
       <div class="crosshair" aria-hidden="true"></div>
-      <div class="hud__bottom" id="status-line">도시 외곽을 정리하고 허브를 지켜내세요.</div>
+      <div class="hud__bottom" id="status-line">Clear the outskirts and hold the city hub.</div>
     </div>
     <div class="overlay overlay--show" id="menu-overlay">
       <div class="panel">
         <p class="eyebrow">Neo Seoul Defense Grid</p>
-        <h1>현대 도시형 3D FPS</h1>
+        <h1>Modern City 3D FPS</h1>
         <p class="copy">
-          밝은 네온 도심을 질주하며 드론 침입을 막으세요. 포인터 락을 지원하고,
-          자동 테스트를 위해 키보드만으로도 플레이할 수 있습니다.
+          Rush through a bright neon downtown and stop the incoming drones. Pointer
+          lock is supported, and the game remains keyboard-playable for automated tests.
         </p>
         <ul class="controls">
-          <li><strong>WASD / 방향키</strong> 이동</li>
-          <li><strong>마우스</strong> 시점 회전</li>
-          <li><strong>Shift / B</strong> 질주</li>
-          <li><strong>Space</strong> 점프</li>
-          <li><strong>좌클릭</strong> 발사</li>
-          <li><strong>P / Esc</strong> 일시정지</li>
-          <li><strong>F</strong> 전체화면</li>
-          <li><strong>R</strong> 재시작</li>
+          <li><strong>WASD / Arrow Keys</strong> Move</li>
+          <li><strong>Mouse</strong> Look</li>
+          <li><strong>Shift / B</strong> Sprint</li>
+          <li><strong>Space</strong> Jump</li>
+          <li><strong>Left Click</strong> Fire</li>
+          <li><strong>P / Esc</strong> Pause</li>
+          <li><strong>F</strong> Fullscreen</li>
+          <li><strong>R</strong> Restart</li>
         </ul>
         <button id="start-btn" class="start-btn">Start Patrol</button>
       </div>
@@ -502,7 +502,7 @@ function startGame() {
     return;
   }
   state.mode = "playing";
-  statusLine.textContent = "드론이 접근 중입니다. 중앙 광장을 방어하세요.";
+  statusLine.textContent = "Drones incoming. Defend the central plaza.";
   showOverlay(false);
   requestPointerLock();
 }
@@ -523,7 +523,7 @@ function restartGame() {
   clearTransientEffects();
   resetWave(1);
   updateUi();
-  statusLine.textContent = "새 순찰을 시작합니다.";
+  statusLine.textContent = "Starting a fresh patrol.";
   showOverlay(false);
   requestPointerLock();
 }
@@ -539,8 +539,8 @@ function pauseGame() {
     return;
   }
   state.mode = "paused";
-  statusLine.textContent = "일시정지됨. P 또는 Start Patrol로 복귀할 수 있습니다.";
-  showOverlay(true, "일시정지 상태입니다. 버튼을 누르거나 P 키로 전투에 복귀하세요.");
+  statusLine.textContent = "Paused. Press P or Start Patrol to jump back in.";
+  showOverlay(true, "The patrol is paused. Press the button or tap P to resume the fight.");
 }
 
 function resumeGame() {
@@ -548,7 +548,7 @@ function resumeGame() {
     return;
   }
   state.mode = "playing";
-  statusLine.textContent = "전투 재개.";
+  statusLine.textContent = "Combat resumed.";
   showOverlay(false);
   requestPointerLock();
 }
@@ -557,9 +557,9 @@ function endGame() {
   state.mode = "gameover";
   showOverlay(
     true,
-    `도시 허브가 무너졌습니다. 최종 점수 ${state.score}점. 버튼이나 R 키로 즉시 재시작할 수 있습니다.`
+    `The city hub has fallen. Final score: ${state.score}. Press the button or R to restart instantly.`
   );
-  statusLine.textContent = "게임 오버. 재시작해 다시 방어선을 세우세요.";
+  statusLine.textContent = "Game over. Restart and rebuild the defense line.";
 }
 
 function requestPointerLock() {
@@ -696,7 +696,7 @@ function fireShot() {
     return;
   }
   state.fireTimer = fireCooldown;
-  statusLine.textContent = "플라즈마 샷 발사.";
+  statusLine.textContent = "Plasma shot fired.";
 
   camera.getWorldDirection(tmpDirection);
   raycaster.set(camera.position, tmpDirection);
@@ -726,10 +726,10 @@ function fireShot() {
       state.score += 100;
       spawnExplosion(closestEnemy.mesh.position.clone(), 0x7ce9ff);
       scene.remove(closestEnemy.mesh);
-      statusLine.textContent = "드론 격추 성공.";
+      statusLine.textContent = "Drone eliminated.";
     } else {
       state.score += 10;
-      statusLine.textContent = "드론 피격.";
+      statusLine.textContent = "Drone hit.";
     }
     updateUi();
   }
@@ -848,7 +848,7 @@ function updateEnemies(delta) {
       enemy.attackCooldown = 0.7;
       state.health = Math.max(0, state.health - (8 + state.wave));
       updateUi();
-      statusLine.textContent = "드론 충돌. 체력이 감소했습니다.";
+      statusLine.textContent = "Drone collision. Health reduced.";
       spawnExplosion(state.player.position.clone(), 0xff9175);
       if (state.health <= 0) {
         endGame();
@@ -861,7 +861,7 @@ function updateEnemies(delta) {
     state.wave += 1;
     state.score += 150;
     updateUi();
-    statusLine.textContent = `광장 확보. 웨이브 ${state.wave} 시작.`;
+    statusLine.textContent = `Plaza secured. Wave ${state.wave} begins.`;
     resetWave(state.wave);
   }
 }
@@ -957,7 +957,7 @@ window.addEventListener("resize", resize);
 document.addEventListener("pointerlockchange", () => {
   state.pointerLocked = document.pointerLockElement === canvas;
   if (!state.pointerLocked && state.mode === "playing") {
-    statusLine.textContent = "포인터 락이 해제되었습니다. 마우스 시점은 버튼을 눌러 다시 활성화할 수 있습니다.";
+    statusLine.textContent = "Pointer lock released. Click to re-enable mouse look.";
   }
 });
 
